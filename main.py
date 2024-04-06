@@ -49,6 +49,7 @@ def process_subscribes(subscribes):
         if _nodes and len(_nodes) > 0:
             add_prefix(_nodes, subscribe)
             add_emoji(_nodes, subscribe)
+            nodefilter(_nodes, subscribe)
             if subscribe.get('subgroup'):
                 subscribe['tag'] = subscribe['tag'] + '-' + subscribe['subgroup'] + '-' + 'subgroup'
             if not nodes.get(subscribe['tag']):
@@ -118,6 +119,15 @@ def add_emoji(nodes, subscribe):
             node['tag'] = tool.rename(node['tag'])
             if node.get('detour'):
                 node['detour'] = tool.rename(node['detour'])
+
+
+def nodefilter(nodes, subscribe):
+    if subscribe.get('ex-node-name'):
+        ex_nodename = re.split(r'[,\|]', subscribe['ex-node-name'])
+        for exns in ex_nodename:
+            for node in nodes[:]:  # 遍历 nodes 的副本，以便安全地删除元素
+                if exns in node['tag']:
+                    nodes.remove(node)
 
 
 def get_nodes(url):
@@ -260,7 +270,9 @@ def get_content_from_url(url, n=6):
             response_text = json.loads(response.text)
             return response_text
         except:
-            pass
+            response_text = re.sub(r'//.*', '', response_text)
+            response_text = json.loads(response_text)
+            return response_text
     else:
         try:
             response_text = tool.b64Decode(response_text)
@@ -411,7 +423,7 @@ def combin_to_config(config, data):
             i += 1
             for out in config_outbounds:
                 if out.get("outbounds"):
-                    if out['tag'] == 'proxy':
+                    if out['tag'] == 'Proxy':
                         out["outbounds"] = [out["outbounds"]] if isinstance(out["outbounds"], str) else out["outbounds"]
                         if '{all}' in out["outbounds"]:
                             index_of_all = out["outbounds"].index('{all}')
@@ -424,7 +436,7 @@ def combin_to_config(config, data):
         else:
             for out in config_outbounds:
                 if out.get("outbounds"):
-                    if out['tag'] == 'proxy':
+                    if out['tag'] == 'Proxy':
                         out["outbounds"] = [out["outbounds"]] if isinstance(out["outbounds"], str) else out["outbounds"]
                         out["outbounds"].append('{' + group + '}')
     temp_outbounds = []
@@ -465,9 +477,11 @@ def combin_to_config(config, data):
                     else:
                         t_o.append(oo)
                 if len(t_o) == 0:
+                    t_o.append('Proxy')
                     print('发现 {} 出站下的节点数量为 0 ，会导致sing-box无法运行，请检查config模板是否正确。'.format(
                         po['tag']))
                     # print('Sing-Box không chạy được vì không tìm thấy bất kỳ proxy nào trong outbound của {}. Vui lòng kiểm tra xem mẫu cấu hình có đúng không!!'.format(po['tag']))
+                    """
                     config_path = json.loads(temp_json_data).get("save_config_path", "config.json")
                     CONFIG_FILE_NAME = config_path
                     config_file_path = os.path.join('/tmp', CONFIG_FILE_NAME)
@@ -476,6 +490,7 @@ def combin_to_config(config, data):
                         print(f"已删除文件：{config_file_path}")
                         # print(f"Các tập tin đã bị xóa: {config_file_path}")
                     sys.exit()
+                    """
                 po['outbounds'] = t_o
                 if po.get('filter'):
                     del po['filter']
